@@ -16,12 +16,12 @@ services:
 
   typebot-builder:
     labels:
-      virtual.host: 'typebot.domain.com' # change to your domain name
+      virtual.host: 'typebot.fluxosmm.com' # change to your domain name
       virtual.port: '3000'
-      virtual.tls-email: 'admin@example.com' # change to your email
+      virtual.tls-email: 'contato@fluxosmm.com' # change to your email
 
   typebot-viewer:
     labels:
-      virtual.host: 'bot.domain.com' # change to your domain name
+      virtual.host: 'chat.fluxosmm.com' # change to your domain name
       virtual.port: '3000'
-      virtual.tls-email: 'admin@example.com' # change to your email
+      virtual.tls-email: 'contato@fluxosmm.com' # change to your email
