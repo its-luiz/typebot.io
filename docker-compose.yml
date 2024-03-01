@@ -1,26 +1,39 @@
-version: '3.7'
+version: '3.3'
 services:
+  caddy-gen:
+    image: 'wemakeservices/caddy-gen:latest'
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+      - caddy-certificates:/data/caddy
+    ports:
+      - '81:80'
+      - '8443:443'
+    depends_on:
+      - typebot-builder
+      - typebot-viewer
   typebot-db:
     image: postgres:13
     restart: always
     volumes:
-      - typebot_db_data:/var/lib/postgresql/data
+      - db_data:/var/lib/postgresql/data
     environment:
       - POSTGRES_DB=typebot
       - POSTGRES_PASSWORD=typebot
-    networks:
-      - typebot
-
   typebot-builder:
+    labels:
+      virtual.host: 'https://typebot.fluxosmm.com'
+      virtual.port: '3000'
+      virtual.tls-email: 'contato@fluxosmm.com'
     image: baptistearno/typebot-builder:latest
     restart: always
+    ports:
+      - '3001:3000'
     depends_on:
       - typebot-db
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.typebot-builder.rule=Host(`typebot.fluxosmm.com`)"
-      - "traefik.http.routers.typebot-builder.entrypoints=web,websecure"
-      - "traefik.http.routers.typebot-builder.tls.certresolver=leresolver"
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+
     environment:
       - DATABASE_URL=postgresql://postgres:typebot@typebot-db:5432/typebot
       - NEXTAUTH_URL=https://typebot.fluxosmm.com
@@ -35,59 +48,48 @@ services:
       - SMTP_USERNAME=contato@fluxosmm.com
       - SMTP_PASSWORD=Intruso99@
       - NEXT_PUBLIC_SMTP_FROM=contato@fluxosmm.com
-      - S3_ACCESS_KEY=minio
+      - S3_ACCESS_KEY=minio 
       - S3_SECRET_KEY=minio123
       - S3_BUCKET=typebot
       - S3_ENDPOINT=storage.fluxosmm.com
-      - typebot
-
   typebot-viewer:
+    labels:
+      virtual.host: 'chat.fluxosmm.com'
+      virtual.port: '3000'
+      virtual.tls-email: 'contato@fluxosmm.com'
     image: baptistearno/typebot-viewer:latest
     restart: always
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.typebot-viewer.rule=Host(`chat.fluxosmm.com`)"
-      - "traefik.http.routers.typebot-viewer.entrypoints=web,websecure"
-      - "traefik.http.routers.typebot-viewer.tls.certresolver=leresolver"
+    ports:
+      - '3002:3000'
+    
     environment:
       - DATABASE_URL=postgresql://postgres:typebot@typebot-db:5432/typebot
       - NEXTAUTH_URL=https://typebot.fluxosmm.com
       - NEXT_PUBLIC_VIEWER_URL=https://chat.fluxosmm.com
-      - ENCRYPTION_SECRET=K+Bar660Ofaec7v1jHC25tAn3l2b7c81
       - SMTP_HOST=smtp.hostinger.com
       - NEXT_PUBLIC_SMTP_FROM=contato@fluxosmm.com
-      - S3_ACCESS_KEY=minio
-      - S3_SECRET_KEY=minio123
+      - S3_ACCESS_KEY=minio 
+      - S3_SECRET_KEY=minio123 
       - S3_BUCKET=typebot
-      - S3_ENDPOINT=storage.seudominio.com 
-    networks:
-      - typebot
-
+      - S3_ENDPOINT=storage.fluxosmm.com
   mail:
     image: bytemark/smtp
     restart: always
-    networks:
-      - typebot
-
   minio:
+    labels:
+      virtual.host: 'storage.fluxosmm.com'
+      virtual.port: '9000'
+      virtual.tls-email: 'contato@fluxosmm.com'
     image: minio/minio
-    restart: always
     command: server /data
     ports:
       - '9000:9000'
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.minio.rule=Host(`storage.fluxosmm.com`)" 
-      - "traefik.http.routers.minio.entrypoints=web,websecure"
-      - "traefik.http.routers.minio.tls.certresolver=leresolver"
     environment:
       MINIO_ROOT_USER: minio 
       MINIO_ROOT_PASSWORD: minio123 
     volumes:
-      - typebot_s3_data:/data
-    networks:
-      - typebot
-
+      - s3_data:/data
+  
   createbuckets:
     image: minio/mc
     depends_on:
@@ -100,13 +102,8 @@ services:
       /usr/bin/mc anonymous set public minio/typebot/public;
       exit 0;
       "
-    networks:
-      - typebot
-
 volumes:
-  typebot_db_data:
-  typebot_s3_data:
-
-networks:
-  typebot:
-    external: true
+  db_data:
+  s3_data:
+  caddy-certificates:
+    driver: local
